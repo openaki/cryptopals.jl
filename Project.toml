@@ -1,0 +1,7 @@
+name = "cryptopals"
+uuid = "3437f8fa-8c9a-4df4-b401-bfbd1dc803f4"
+authors = ["openaki "]
+version = "0.1.0"
+
+[deps]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
