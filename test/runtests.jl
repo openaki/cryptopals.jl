@@ -41,16 +41,47 @@ end
 
 	@test Bytes.xor(from_hex("1c0111001f010100061a024b53535009181c"), from_hex("686974207468652062756c6c277320657965")) == from_hex("746865206b696420646f6e277420706c6179")
 
+	@test hamming_distance(from_string("this is a test"), from_string("wokka wokka!!!")) == 37
+
 end
 
 @testset "cipher" begin
 
 	@test single_key_xor_decrypt(from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")) == "Cooking MC's like a pound of bacon"
+	
+	@test single_key_xor_decrypt_key(from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")) == 0x58
 
 
 	file_name = get_input_file("challenge1_4.txt")
 	file_content = readlines(file_name) |> it -> Iterators.map(from_hex, it)
 	@test detect_single_char_xor(file_content) == "Now that the party is jumping\n"
+
+	string_input = [
+					("Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal", 
+                     "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"), 
+		]
+	for (s, t) in string_input
+		ans = repeating_key_xor_decrypt(from_string(s), from_string("ICE")) 
+		t = from_hex(t)
+		@test ans == t
+	end
+
+	file_name = get_input_file("challenge1_6.txt")
+	file_content = readlines(file_name) |> join |>  from_base64 
+
+	@test break_repeating_key_xor(file_content) |> (s -> split(s, "\n")) |> Iterators.first == "I'm back and I'm ringin' the bell "
+
+	file_name = get_input_file("challenge1_7.txt")
+	file_content = readlines(file_name) |> join |>  from_base64 
+	key = from_string("YELLOW SUBMARINE")
+	ans = aes_128_ecb_decrypt(file_content, key)
+	@test split(ans, "\n") |> Iterators.first == "I'm back and I'm ringin' the bell "
+
+	file_name = get_input_file("challenge1_8.txt")
+	file_content = readlines(file_name) |> it -> Iterators.map(from_hex, it)
+	ans = aes_128_ecb_detect(file_content)
+
+
 
 end
 

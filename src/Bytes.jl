@@ -1,6 +1,6 @@
 module Bytes
 
-export from_string, from_hex, from_base64, from_bytes, to_hex, to_base64, xor
+export from_string, from_hex, from_base64, from_bytes, to_hex, to_base64, xor, hamming_distance
 
 T = Vector{UInt8}
 
@@ -146,6 +146,18 @@ function xor(a :: T, b :: T) :: T
         ans[i] = Base.xor(x, y)
     end
     ans
+end
+
+function count_one_bits(b :: UInt8) :: Int
+    ans = 0
+    for i in 0:7
+        b & (2^i) != 0 && (ans += 1)
+    end
+    return ans
+end
+
+function hamming_distance(a, b) :: Int
+    Iterators.zip(a, b) |> it -> Iterators.map(x -> count_one_bits(x[1] ⊻ x[2]), it) |> sum
 end
 
 end
