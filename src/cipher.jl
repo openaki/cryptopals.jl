@@ -116,7 +116,8 @@ end
 function aes_128_ecb_encrypt(bs::Bytes.T, key::Bytes.T)::Bytes.T
     aes_key = AES128Key(key)
     cipher = AESCipher(;mode=AES.ECB, key=aes_key)
-    return encrypt(bs, cipher)
+    cipher2 = AESCipher(;mode=AES.ECB, key=123)
+    return encrypt(bs, cipher).data
 end
 
 function get_same_block_count(bs, block_size=16)
