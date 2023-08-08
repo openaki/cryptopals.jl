@@ -1,6 +1,7 @@
 module Bytes
 
-export from_string, from_hex, from_base64, from_bytes, to_hex, to_base64, xor, hamming_distance
+
+export from_string, from_hex, from_base64, from_bytes, to_hex, to_base64, xor, hamming_distance, from_iterator
 
 T = Vector{UInt8}
 
@@ -158,6 +159,14 @@ end
 
 function hamming_distance(a, b) :: Int
     Iterators.zip(a, b) |> it -> Iterators.map(x -> count_one_bits(x[1] ⊻ x[2]), it) |> sum
+end
+
+function from_iterator(it)
+    ans = Bytes.T(undef, 0)
+    for b in it
+        push!(ans, b)
+    end
+    return ans
 end
 
 end
