@@ -2,7 +2,7 @@ using AES
 
 using IterTools
 
-export single_key_xor, single_key_xor_decrypt, single_key_xor_decrypt_key, detect_single_char_xor, repeating_key_xor_decrypt, break_repeating_key_xor, aes_128_ecb_decrypt, aes_128_ecb_detect, add_pkcs_padding, aes_128_ecb_encrypt
+export single_key_xor, single_key_xor_decrypt, single_key_xor_decrypt_key, detect_single_char_xor, repeating_key_xor_decrypt, break_repeating_key_xor, aes_128_ecb_decrypt, aes_128_ecb_detect, add_pkcs_padding, aes_128_ecb_encrypt, aes_128_cbc_decrypt, aes_128_cbc_encrypt
 
 function single_key_xor_it(bs, b::UInt8)
     Iterators.map(i -> Base.xor(i, b), bs)
@@ -106,18 +106,29 @@ function break_repeating_key_xor(bs::Bytes.T)::String
 
 end
 
-function aes_128_ecb_decrypt(bs::Bytes.T, key::Bytes.T)::String
+function aes_128_ecb_decrypt(bs::Bytes.T, key::Bytes.T) :: String
     aes_key = AES128Key(key)
     aes_cache = AES.gen_cache(aes_key, AES.ECB)
     AES.AESECB_D(bs, aes_key, aes_cache) |> String
+end
 
+function aes_128_ecb_decrypt(plain_text::Bytes.T, bs::Bytes.T, key::Bytes.T)
+    aes_key = AES128Key(key)
+    aes_cache = AES.gen_cache(aes_key, AES.ECB)
+    AES.AESECB_D!(plain_text, bs, aes_key, aes_cache)
+    return plain_text
 end
 
 function aes_128_ecb_encrypt(bs::Bytes.T, key::Bytes.T)::Bytes.T
     aes_key = AES128Key(key)
-    cipher = AESCipher(;mode=AES.ECB, key=aes_key)
-    cipher2 = AESCipher(;mode=AES.ECB, key=123)
+    cipher = AESCipher(; mode=AES.ECB, key=aes_key)
     return encrypt(bs, cipher).data
+end
+
+function aes_128_ecb_encrypt!(encryted::Bytes.T, bs::Bytes.T, key::Bytes.T)::Bytes.T
+    aes_key = AES128Key(key)
+    aes_cache = AES.gen_cache(aes_key, AES.ECB)
+    AES.AESECB!(encryted, bs, aes_key, aes_cache)
 end
 
 function get_same_block_count(bs, block_size=16)
@@ -137,9 +148,56 @@ function aes_128_ecb_detect(bs)::Bytes.T
     argmax(get_same_block_count, bs)
 end
 
-function add_pkcs_padding(bs, block_size)
+function add_pkcs_padding(bs, block_size, padding_byte = 0x04)
     padded_len = ((length(bs) + block_size - 1) ÷ block_size) * block_size
-    padded_it = Iterators.repeated(0x04, padded_len - length(bs))
+    padded_it = Iterators.repeated(padding_byte, padded_len - length(bs))
 
     return Iterators.flatten((bs, padded_it))
+end
+
+function remove_pkcs_padding(bs, block_size, padding_byte = 0x04)
+    padded_len = 0
+    for x in Iterators.reverse(bs) |> it -> Iterators.takewhile(x -> x == padding_byte, it) 
+        padded_len += 1
+    end
+
+    return @view bs[1:length(bs) - padded_len]
+end
+
+
+function aes_128_cbc_decrypt(bs::Bytes.T, key::Bytes.T, iv = zeros(UInt8, 16))::String
+    ans = Vector{UInt8}(undef, length(bs))
+    blk_len = 16
+
+    plain_text = Vector{UInt8}(undef, blk_len)
+    blk_arena = Vector{UInt8}(undef, blk_len)
+    for (i, blk) in enumerate(Iterators.partition(bs, blk_len))
+        blk_arena[1:end] = blk
+        #collect(blk)
+        dec = aes_128_ecb_decrypt(plain_text, blk_arena, key)
+        Bytes.xor!(dec, iv)
+        iv[1:end] = blk_arena
+        ans[(i-1)*blk_len + 1:i*blk_len] = dec
+        #append!(ans, pt)
+    end
+    return remove_pkcs_padding(ans, 16, 0x00) |> String
+end
+
+function aes_128_cbc_encrypt(bs::Bytes.T, key::Bytes.T, iv = zeros(UInt8, 16))::Bytes.T
+    bs = add_pkcs_padding(bs, 16, 0x00) |> collect
+    ans = Vector{UInt8}(undef, length(bs))
+    blk_len = 16
+
+    cipher_text = Vector{UInt8}(undef, blk_len + 16)
+    blk_arena = Vector{UInt8}(undef, blk_len)
+    for (i, blk) in enumerate(Iterators.partition(bs, blk_len))
+        blk_arena[1:end] = blk
+        #collect(blk)
+        Bytes.xor!(blk_arena, iv)
+        aes_128_ecb_encrypt!(cipher_text, blk_arena, key)
+        iv[1:end] = cipher_text[1:16]
+        ans[(i-1)*blk_len + 1:i*blk_len] = cipher_text[1:16]
+        #append!(ans, pt)
+    end
+    return ans |> collect
 end

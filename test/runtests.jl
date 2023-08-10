@@ -92,5 +92,19 @@ end
     padded = add_pkcs_padding("YELLOW SUBMARINE", 20) |> from_iterator
     @test padded[17:20] == UInt8[0x04, 0x04, 0x04, 0x04]
     @test (padded[1:16] |> String) == "YELLOW SUBMARINE"
+
+
+    file_name = get_input_file("challenge1_10.txt")
+    file_content = readlines(file_name) |> join |> from_base64
+    test_key = Bytes.from_string("YELLOW SUBMARINE")
+	decrypted_text = aes_128_cbc_decrypt(file_content, test_key)
+	@test split(decrypted_text, "\n")[1] == "I'm back and I'm ringin' the bell "
+
+    test_key = Bytes.from_string("YELLOW SUBMARINE")
+    test_string = "Hello World. This an encryption test from Julia"
+    encrypted_text = aes_128_cbc_encrypt(Bytes.from_string(test_string), test_key)
+    decrypted_text = aes_128_cbc_decrypt(encrypted_text, test_key) 
+    @test test_string == decrypted_text
+
 end
 

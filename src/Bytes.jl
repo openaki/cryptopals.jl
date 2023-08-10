@@ -149,6 +149,12 @@ function xor(a :: T, b :: T) :: T
     ans
 end
 
+function xor!(a :: T, b :: T)
+    for (i, (x, y)) in enumerate(Iterators.zip(a, b))
+        a[i] = Base.xor(x, y)
+    end
+end
+
 function count_one_bits(b :: UInt8) :: Int
     ans = 0
     for i in 0:7
